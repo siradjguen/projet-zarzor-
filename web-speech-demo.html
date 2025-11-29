@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Web Speech API - STT + TTS</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 700px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .section {
+            background: #f7f9fc;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        .section h2 {
+            color: #667eea;
+            font-size: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            display: inline-block;
+            background: #cbd5e0;
+        }
+
+        .status-indicator.active {
+            background: #48bb78;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-indicator.listening {
+            background: #ed8936;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.1); }
+        }
+
+        .transcript-box {
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 20px;
+            min-height: 120px;
+            margin-bottom: 15px;
+            font-size: 18px;
+            color: #2d3748;
+            line-height: 1.6;
+        }
+
+        .transcript-box.empty {
+            color: #a0aec0;
+            font-style: italic;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            min-width: 140px;
+            padding: 15px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: #48bb78;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #f56565;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #4299e1;
+            color: white;
+        }
+
+        .settings {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+
+        .settings label {
+            display: block;
+            margin-bottom: 8px;
+            color: #4a5568;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .settings select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .settings input[type="range"] {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .value-display {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .info-box {
+            background: #ebf8ff;
+            border-left: 4px solid #4299e1;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #2c5282;
+        }
+
+        .warning-box {
+            background: #fff5f5;
+            border-left: 4px solid #f56565;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #c53030;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .feature-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .feature-card .icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .feature-card .label {
+            font-size: 12px;
+            color: #718096;
+            font-weight: 600;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+            
+            button {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎤 Web Speech API Demo</h1>
+            <p>Speech-to-Text (STT) & Text-to-Speech (TTS)</p>
+        </div>
+
+        <!-- Section STT (Speech Recognition) -->
+        <div class="section">
+            <h2>
+                <span class="status-indicator" id="sttStatus"></span>
+                🎤 Speech-to-Text (STT)
+            </h2>
+            
+            <div class="transcript-box empty" id="transcriptBox">
+                Appuyez sur "Commencer à parler" et dites quelque chose...
+            </div>
+
+            <div class="controls">
+                <button class="btn-primary" id="startBtn">
+                    <span>▶️</span> Commencer à parler
+                </button>
+                <button class="btn-danger" id="stopBtn" disabled>
+                    <span>⏹️</span> Arrêter
+                </button>
+                <button class="btn-secondary" id="clearBtn">
+                    <span>🗑️</span> Effacer
+                </button>
+            </div>
+
+            <div class="settings">
+                <label>🌍 Langue de reconnaissance</label>
+                <select id="languageSelect">
+                    <option value="fr-FR" selected>🇫🇷 Français</option>
+                    <option value="ar-DZ">🇩🇿 Arabe (Algérie)</option>
+                    <option value="en-US">🇺🇸 Anglais (US)</option>
+                    <option value="en-GB">🇬🇧 Anglais (UK)</option>
+                    <option value="es-ES">🇪🇸 Espagnol</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Section TTS (Speech Synthesis) -->
+        <div class="section">
+            <h2>
+                <span class="status-indicator" id="ttsStatus"></span>
+                🔊 Text-to-Speech (TTS)
+            </h2>
+
+            <div class="transcript-box" id="ttsInput" contenteditable="true">
+                Écrivez ou collez du texte ici pour que l'ordinateur le lise à voix haute...
+            </div>
+
+            <div class="controls">
+                <button class="btn-primary" id="speakBtn">
+                    <span>🔊</span> Parler
+                </button>
+                <button class="btn-danger" id="pauseBtn" disabled>
+                    <span>⏸️</span> Pause
+                </button>
+                <button class="btn-secondary" id="resumeBtn" disabled>
+                    <span>▶️</span> Reprendre
+                </button>
+            </div>
+
+            <div class="settings">
+                <label>🎭 Voix disponibles</label>
+                <select id="voiceSelect">
+                    <option>Chargement des voix...</option>
+                </select>
+
+                <label>⚡ Vitesse: <span class="value-display" id="rateValue">1.0x</span></label>
+                <input type="range" id="rateSlider" min="0.5" max="2" step="0.1" value="1">
+
+                <label>🎵 Tonalité: <span class="value-display" id="pitchValue">1.0</span></label>
+                <input type="range" id="pitchSlider" min="0.5" max="2" step="0.1" value="1">
+
+                <label>🔊 Volume: <span class="value-display" id="volumeValue">100%</span></label>
+                <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="1">
+            </div>
+        </div>
+
+        <!-- Features Grid -->
+        <div class="section">
+            <h2>✨ Fonctionnalités</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="icon">🎤</div>
+                    <div class="label">Reconnaissance vocale</div>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">🔊</div>
+                    <div class="label">Synthèse vocale</div>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">🌍</div>
+                    <div class="label">Multi-langues</div>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">⚙️</div>
+                    <div class="label">Personnalisable</div>
+                </div>
+            </div>
+        </div>
+        <strong data-start="551" data-end="590">Explainable AI &amp; Compliance Support</strong>
+
+        <!-- Info Box -->
+        <div class="info-box">
+            <strong>💡 Comment ça marche ?</strong><br>
+            Cette démo utilise les APIs natives du navigateur (Chrome/Edge) :
+            <ul style="margin-top: 10px; margin-left: 20px;">
+                <li><strong>Web Speech API (STT)</strong> : Convertit votre voix en texte</li>
+                <li><strong>Speech Synthesis API (TTS)</strong> : Convertit du texte en voix</li>
+                <li><strong>100% gratuit</strong> : Aucune clé API nécessaire</li>
+            </ul>
+        </div>
+
+        <!-- Warning Box -->
+        <div class="warning-box" id="warningBox" style="display: none;">
+            ⚠️ <strong>Attention :</strong> Votre navigateur ne supporte pas Web Speech API. 
+            Utilisez <strong>Google Chrome</strong> ou <strong>Microsoft Edge</strong>.
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // VARIABLES GLOBALES
+        // ==========================================
+        let recognition;
+        let synthesis = window.speechSynthesis;
+        let voices = [];
+        let isListening = false;
+        let isSpeaking = false;
+
+        // Éléments DOM
+        const transcriptBox = document.getElementById('transcriptBox');
+        const ttsInput = document.getElementById('ttsInput');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const speakBtn = document.getElementById('speakBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resumeBtn = document.getElementById('resumeBtn');
+        const languageSelect = document.getElementById('languageSelect');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const rateSlider = document.getElementById('rateSlider');
+        const pitchSlider = document.getElementById('pitchSlider');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const rateValue = document.getElementById('rateValue');
+        const pitchValue = document.getElementById('pitchValue');
+        const volumeValue = document.getElementById('volumeValue');
+        const sttStatus = document.getElementById('sttStatus');
+        const ttsStatus = document.getElementById('ttsStatus');
+        const warningBox = document.getElementById('warningBox');
+
+        // ==========================================
+        // INITIALISATION STT (Speech Recognition)
+        // ==========================================
+        function initSTT() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = languageSelect.value;
+
+                // Événement : Début de reconnaissance
+                recognition.onstart = () => {
+                    isListening = true;
+                    sttStatus.classList.add('listening');
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                    transcriptBox.classList.add('empty');
+                    transcriptBox.textContent = '🎤 Je vous écoute... Parlez maintenant !';
+                };
+
+                // Événement : Fin de reconnaissance
+                recognition.onend = () => {
+                    isListening = false;
+                    sttStatus.classList.remove('listening');
+                    startBtn.disabled = false;
+                    stopBtn.disabled = true;
+                };
+
+                // Événement : Résultat obtenu
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    const confidence = (event.results[0][0].confidence * 100).toFixed(1);
+                    
+                    transcriptBox.classList.remove('empty');
+                    transcriptBox.innerHTML = `
+                        <strong>Vous avez dit :</strong><br>
+                        "${transcript}"<br><br>
+                        <small style="color: #48bb78;">✓ Confiance : ${confidence}%</small>
+                    `;
+
+                    // Auto-copier dans TTS
+                    ttsInput.textContent = transcript;
+                };
+
+                // Événement : Erreur
+                recognition.onerror = (event) => {
+                    console.error('Erreur STT:', event.error);
+                    let errorMsg = 'Erreur inconnue';
+                    
+                    switch(event.error) {
+                        case 'no-speech':
+                            errorMsg = 'Aucune parole détectée. Réessayez.';
+                            break;
+                        case 'audio-capture':
+                            errorMsg = 'Microphone non détecté. Vérifiez vos permissions.';
+                            break;
+                        case 'not-allowed':
+                            errorMsg = 'Permission microphone refusée.';
+                            break;
+                        case 'network':
+                            errorMsg = 'Erreur réseau. Vérifiez votre connexion.';
+                            break;
+                    }
+                    
+                    transcriptBox.classList.remove('empty');
+                    transcriptBox.innerHTML = `<span style="color: #f56565;">❌ ${errorMsg}</span>`;
+                };
+            } else {
+                warningBox.style.display = 'block';
+                startBtn.disabled = true;
+            }
+        }
+
+        // ==========================================
+        // INITIALISATION TTS (Speech Synthesis)
+        // ==========================================
+        function loadVoices() {
+            voices = synthesis.getVoices();
+            voiceSelect.innerHTML = '';
+
+            if (voices.length === 0) {
+                voiceSelect.innerHTML = '<option>Aucune voix disponible</option>';
+                return;
+            }
+
+            // Filtrer et afficher les voix
+            voices.forEach((voice, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                
+                const langFlag = {
+                    'fr': '🇫🇷',
+                    'en': '🇬🇧',
+                    'ar': '🇸🇦',
+                    'es': '🇪🇸',
+                    'de': '🇩🇪'
+                };
+                
+                const flag = langFlag[voice.lang.substring(0, 2)] || '🌍';
+                option.textContent = `${flag} ${voice.name} (${voice.lang})`;
+                
+                voiceSelect.appendChild(option);
+            });
+
+            // Sélectionner une voix française par défaut
+            const frenchVoice = voices.findIndex(v => v.lang.startsWith('fr'));
+            if (frenchVoice !== -1) {
+                voiceSelect.value = frenchVoice;
+            }
+        }
+
+        // ==========================================
+        // FONCTION TTS
+        // ==========================================
+        function speak(text) {
+            if (!text || text.trim() === '' || text === 'Écrivez ou collez du texte ici pour que l\'ordinateur le lise à voix haute...') {
+                alert('⚠️ Veuillez entrer du texte à lire !');
+                return;
+            }
+
+            // Arrêter toute lecture en cours
+            synthesis.cancel();
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            
+            // Paramètres
+            utterance.voice = voices[voiceSelect.value];
+            utterance.rate = parseFloat(rateSlider.value);
+            utterance.pitch = parseFloat(pitchSlider.value);
+            utterance.volume = parseFloat(volumeSlider.value);
+
+            // Événements
+            utterance.onstart = () => {
+                isSpeaking = true;
+                ttsStatus.classList.add('active');
+                speakBtn.disabled = true;
+                pauseBtn.disabled = false;
+            };
+
+            utterance.onend = () => {
+                isSpeaking = false;
+                ttsStatus.classList.remove('active');
+                speakBtn.disabled = false;
+                pauseBtn.disabled = true;
+                resumeBtn.disabled = true;
+            };
+
+            utterance.onerror = (event) => {
+                console.error('Erreur TTS:', event);
+                ttsStatus.classList.remove('active');
+            };
+
+            synthesis.speak(utterance);
+        }
+
+        // ==========================================
+        // EVENT LISTENERS
+        // ==========================================
+
+        // STT Controls
+        startBtn.addEventListener('click', () => {
+            recognition.lang = languageSelect.value;
+            recognition.start();
+        });
+
+        stopBtn.addEventListener('click', () => {
+            recognition.stop();
+        });
+
+        clearBtn.addEventListener('click', () => {
+            transcriptBox.classList.add('empty');
+            transcriptBox.textContent = 'Appuyez sur "Commencer à parler" et dites quelque chose...';
+        });
+
+        // TTS Controls
+        speakBtn.addEventListener('click', () => {
+            speak(ttsInput.textContent);
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            synthesis.pause();
+            pauseBtn.disabled = true;
+            resumeBtn.disabled = false;
+        });
+
+        resumeBtn.addEventListener('click', () => {
+            synthesis.resume();
+            pauseBtn.disabled = false;
+            resumeBtn.disabled = true;
+        });
+
+        // Sliders
+        rateSlider.addEventListener('input', (e) => {
+            rateValue.textContent = e.target.value + 'x';
+        });
+
+        pitchSlider.addEventListener('input', (e) => {
+            pitchValue.textContent = e.target.value;
+        });
+
+        volumeSlider.addEventListener('input', (e) => {
+            const percent = Math.round(e.target.value * 100);
+            volumeValue.textContent = percent + '%';
+        });
+
+        // ==========================================
+        // INITIALISATION AU CHARGEMENT
+        // ==========================================
+        window.addEventListener('load', () => {
+            initSTT();
+            loadVoices();
+
+            // Recharger les voix si elles ne sont pas encore disponibles
+            if (synthesis.onvoiceschanged !== undefined) {
+                synthesis.onvoiceschanged = loadVoices;
+            }
+        });
+    </script>
+</body>
+</html>
