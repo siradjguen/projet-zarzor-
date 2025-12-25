@@ -1,0 +1,103 @@
+# Project Documentation: MediBook Clinic Backend
+
+## 1. Project Structure and Purpose
+
+This backend manages clinic appointments, schedules, and related logic for the MediBook Clinic. It is designed to be connected to a frontend (web or mobile) for booking and managing appointments.
+
+**Main folders and files:**
+- `main.py`: Entry point for the backend server (API or app logic).
+- `app/`: Configuration and app-wide settings.
+- `data/appointments.json`: Stores all appointment records in JSON format.
+- `llm/`: Logic for language model integration (if used).
+- `mcp/`: Intent handling and server logic (for chatbot or API).
+- `services/`: Core business logic, especially appointment and calendar management.
+
+## 2. Configuration and Clinic Settings
+
+Configuration is in `app/config.py`:
+- **Timezone:** `Africa/Algiers`
+- **Working hours:**
+  - Monday–Friday: 9:00–18:00
+  - Saturday: 9:00–14:00
+  - Sunday: Closed
+- **Default appointment duration:** 30 minutes
+- **Appointments file:** `data/appointments.json`
+
+## 3. Appointment Data Format
+
+Each appointment in `appointments.json` looks like:
+```json
+{
+  "id": "string",              // Unique appointment ID
+  "patient_name": "string",    // Patient's name
+  "patient_phone": "string",   // Patient's phone number
+  "start_time": "ISO8601",     // Start datetime (with timezone)
+  "end_time": "ISO8601",       // End datetime (with timezone)
+  "duration": 30,               // Duration in minutes
+  "reason": "string",          // Reason for appointment
+  "doctor_name": "string|null",// Doctor's name (optional)
+  "created_at": "ISO8601",     // Creation datetime
+  "status": "confirmed"        // Status (e.g., confirmed, cancelled)
+}
+```
+
+## 4. Core Backend Services and APIs
+
+Main logic is in `services/calendar_service.py`:
+- **load_appointments()**: Loads all appointments from JSON.
+- **save_appointments()**: Saves appointments to JSON.
+- **parse_datetime(date_str, time_str)**: Parses human-friendly date/time to datetime.
+- **check_availability(start_time, duration)**: Checks if a slot is available.
+- **create_appointment(...)**: Books a new appointment (checks for conflicts, working hours, etc.).
+- **cancel_appointment(appointment_id)**: Cancels an appointment by ID.
+- **update_appointment(appointment_id, updates)**: Updates appointment details.
+- **get_appointments_by_phone(phone)**: Gets all appointments for a phone number.
+- **get_all_appointments()**: Returns all appointments.
+- **get_available_slots(date, duration)**: Returns available slots for a given date.
+- **get_today_appointments()**: Returns today's appointments.
+
+## 5. Integration Notes for Frontend
+
+- The backend expects and returns data in JSON format.
+- Appointment times must be in ISO8601 format with timezone.
+- To book, update, or cancel appointments, use the corresponding service functions (or API endpoints if exposed).
+- Check availability before booking to avoid conflicts.
+- Use the working hours and closed days from the config to guide frontend UI.
+- No authentication is shown in the backend code, but you may add it if needed.
+
+## 6. Installation and Running the Server
+
+### Requirements
+- Python 3.8+
+- All dependencies in `requirements.txt` (see below)
+
+### Install dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### Start the server (development)
+```bash
+python main.py
+```
+- The API will be available at: http://localhost:8000
+- Main endpoints:
+  - `GET /` — Health check
+  - `POST /chat` — Main chat/booking endpoint
+  - `DELETE /session/{session_id}` — Clear a session
+
+### Required Python packages
+- fastapi
+- uvicorn[standard]
+- pydantic
+- groq
+- pytz
+- python-multipart
+- requests
+- python-dotenv
+
+---
+
+Make sure to set any required environment variables (like `GROQ_API_KEY`) if using LLM features.
+
+For further details, see the code in `services/calendar_service.py` and `app/config.py`. This backend is ready to be linked with any frontend that can send/receive JSON data.
